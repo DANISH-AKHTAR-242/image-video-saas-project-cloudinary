@@ -1,92 +1,93 @@
-# Imaginify - AI Image & Video SaaS Platform
+<div align="center">
 
-Welcome to **Imaginify**, a full-stack Software-as-a-Service (SaaS) application built with Next.js and powered by Cloudinary for advanced AI-driven image and video management. This platform provides a robust solution for users to upload, transform, and optimize their media assets with ease.
+# Imaginify – Cloudinary SaaS Starter
 
----
+Production-ready Next.js SaaS for uploading, transforming, and delivering images & videos on Cloudinary with per-user quotas.
 
-## ✨ Key Features
+</div>
 
-- **Secure User Authentication:** Complete login and registration system to manage user accounts.
-- **Cloudinary Integration:** Leverages the full power of Cloudinary for storing, transforming, and delivering media.
-- **Advanced Image Transformations:**
-  - **AI Generative Fill:** Intelligently fill or replace parts of an image.
-  - **Object Removal:** Seamlessly remove unwanted objects from photos.
-  - **Object Recolor:** Change the color of specific objects within an image.
-  - **Background Removal:** Automatically remove the background from any image.
-- **Dynamic Video Processing:** (If applicable) Features for video upload, optimization, and transformation.
-- **Modern UI/UX:** A sleek, responsive, and intuitive user interface built with **Tailwind CSS** and enhanced with animations from **Framer Motion**.
-- **Organized Media Library:** A user-specific gallery to view and manage all uploaded assets.
+## Table of Contents
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Database Schema](#database-schema)
+- [API](#api)
+- [Usage Limits](#usage-limits)
+- [Deployment](#deployment)
 
----
+## Features
+- Clerk authentication (sign-in/up, protected routes).
+- Cloudinary service layer for uploads, transformations, and secure URLs.
+- Prisma/PostgreSQL persistence with user-owned assets.
+- Daily free-tier quota (10 uploads/day) with usage tracking endpoint.
+- Video and image upload flows with previews and compression stats.
+- Social share image resizing presets.
+- Responsive dashboard with per-user asset history.
 
-## 🛠️ Tech Stack
+## Architecture
+```
+app/                # Next.js App Router pages + route handlers
+app/api/*           # API routes (upload, assets, usage)
+components/         # UI components (cards, shared widgets)
+lib/                # Prisma client, user helpers, usage limits, validators
+services/           # Cloudinary abstraction
+prisma/             # Schema and generated client
+types/              # Shared TypeScript contracts
+```
 
-- **Framework:** [Next.js](https://nextjs.org/) (App Router)
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-- **Animation:** [Framer Motion](https://www.framer.com/motion/)
-- **Media Management:** [Cloudinary](https://cloudinary.com/)
-- **Database:** [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
-- **Authentication:** Next-Auth or a custom JWT-based solution.
-- **UI Components:** Custom, reusable components for a consistent look and feel.
+## Tech Stack
+- **Next.js 15 (App Router)** + **TypeScript**
+- **Clerk** for authentication
+- **Prisma** + **PostgreSQL** for data
+- **Cloudinary** + **next-cloudinary** for media
+- **Tailwind CSS 4 / DaisyUI** for styling
+- **Zod** for payload validation
 
----
+## Getting Started
+1. Install dependencies
+   ```bash
+   npm install
+   ```
+2. Configure environment
+   ```bash
+   cp .env.example .env.local
+   # Fill in Clerk, Cloudinary, and DATABASE_URL
+   ```
+3. Generate Prisma client
+   ```bash
+   DATABASE_URL="postgresql://user:password@localhost:5432/imagify" npx prisma generate
+   ```
+4. Run the dev server
+   ```bash
+   npm run dev
+   ```
 
-## 🚀 Getting Started
+## Environment Variables
+See `.env.example` for the full list:
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- `DATABASE_URL`
 
-To get a local copy up and running, follow these simple steps.
+## Database Schema
+- **User**: id, email, plan (FREE/PRO/TEAM)
+- **Asset**: userId, type (IMAGE/VIDEO), publicId, sizes, duration, format, timestamps
+- **Usage**: userId, uploadsToday, lastResetAt, lastUploadAt
 
-### Prerequisites
+## API
+- `POST /api/video-upload` – Upload a video, compress, persist asset.
+- `POST /api/image-upload` – Upload an image, persist asset.
+- `GET /api/videos` – List current user's video assets.
+- `GET /api/usage` – Usage snapshot (plan, uploads today, free-tier limit).
 
-You need to have Node.js (v18 or later) and npm/yarn installed on your machine. You will also need a Cloudinary account and a MongoDB database.
+All upload routes require authentication and enforce daily limits.
 
-- [Node.js](https://nodejs.org/)
-- [Cloudinary Account](https://cloudinary.com/users/register/free)
-- [MongoDB Atlas Account](https://www.mongodb.com/cloud/atlas) (for a free database)
+## Usage Limits
+- Free tier: **10 uploads/day** per user (images + videos).
+- Limits reset daily (UTC). Exceeding returns **429** with a reset hint.
 
-### Installation & Setup
-
-1.  **Clone the repository:**
-
-    ```sh
-    git clone [https://github.com/ZatChBELL0/image-video-saas-project-cloudinary.git](https://github.com/ZatChBELL0/image-video-saas-project-cloudinary.git)
-    cd image-video-saas-project-cloudinary
-    ```
-
-2.  **Install NPM packages:**
-
-    ```sh
-    npm install
-    ```
-
-3.  **Set up environment variables:**
-    Create a new file named `.env.local` in the root of your project and add the following variables with your credentials:
-
-    ```env
-    # MongoDB Connection String
-    MONGO_URI=your_mongodb_connection_string_here
-
-    # Cloudinary Credentials
-    CLOUDINARY_CLOUD_NAME=your_cloud_name
-    CLOUDINARY_API_KEY=your_api_key
-    CLOUDINARY_API_SECRET=your_api_secret
-
-    # NextAuth Secret (if using NextAuth)
-    NEXTAUTH_SECRET=a_super_secret_string_for_nextauth
-    ```
-
-    > **Important:** Your secrets should be kept private and never committed to Git.
-
-4.  **Run the development server:**
-    ```sh
-    npm run dev
-    ```
-    The application will be available at `http://localhost:3000`.
-
----
-
-## 👤 Author
-
-**ZatChBELL0**
-
-- **GitHub:** [@ZatChBELL0](https://github.com/ZatChBELL0)
+## Deployment
+- Set all environment variables in your host (Vercel/Render/Fly).
+- Ensure Postgres is reachable from your deployment.
+- Run database migrations before first deploy (`prisma migrate deploy`).

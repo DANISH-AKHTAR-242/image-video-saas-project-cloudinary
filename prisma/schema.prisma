@@ -14,14 +14,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model video {
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+}
+
+model User {
+  id String @id
+  email String?
+  plan Plan @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assets Asset[]
+  usage Usage?
+}
+
+model Asset {
   id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  type AssetType
   title String
   description String?
   publicId String
-  originalSize String
-  cpmpressedSize String
-  duration Float
+  resourceType String
+  originalBytes Int
+  processedBytes Int?
+  duration Float?
+  format String?
   createdAt DateTime @default(now())
-  updatedAat DateTime @updatedAt
+  updatedAt DateTime @updatedAt
+}
+
+model Usage {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id])
+  uploadsToday Int @default(0)
+  lastUploadAt DateTime?
+  lastResetAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

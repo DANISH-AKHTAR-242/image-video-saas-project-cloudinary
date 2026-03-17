@@ -1,11 +1,17 @@
-import { PrismaClient } from "@/prisma/generated/prisma";
-import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { AssetType } from "@/prisma/generated/prisma";
+import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-const prisma = new PrismaClient();
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const videos = await prisma.video.findMany({
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const videos = await prisma.asset.findMany({
+      where: { userId, type: AssetType.VIDEO },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(videos);
@@ -15,7 +21,5 @@ export async function GET(request: NextRequest) {
       { error: "Error fetching the videos" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

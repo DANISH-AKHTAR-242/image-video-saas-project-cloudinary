@@ -1,18 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
-import { v2 as cloudinary } from "cloudinary";
+import { prisma } from "@/lib/prisma";
+import { assertWithinUploadLimit, incrementUploadCount } from "@/lib/usage";
+import { ensureUser } from "@/lib/user";
+import { uploadPayloadSchema } from "@/lib/validators/upload";
+import { AssetType } from "@/prisma/generated/prisma";
+import { cloudinaryService } from "@/services/cloudinary.service";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-
-// Configuration
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRECT, // Click 'View API Keys' above to copy your API secret
-});
-
-interface CloudinaryUploadResult {
-  public_id: string;
-  [key: string]: string | number | boolean | object | undefined;
-}
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
@@ -21,41 +14,62 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    if (
-      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-      !process.env.CLOUDINARY_API_KEY ||
-      !process.env.CLOUDINARY_API_SECRECT
-    ) {
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+
+    const payload = uploadPayloadSchema
+      .omit({ originalSize: true })
+      .safeParse({
+        title: formData.get("title") ?? "Uploaded image",
+        description: formData.get("description") ?? undefined,
+      });
+
+    if (!payload.success) {
       return NextResponse.json(
-        { error: "Cloudninary credintial not found" },
-        { status: 500 }
+        { error: "Invalid payload", details: payload.error.flatten() },
+        { status: 400 }
       );
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
     if (!file) {
       return NextResponse.json({ error: "File not found" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    await assertWithinUploadLimit(userId);
 
-    const result = await new Promise<CloudinaryUploadResult>(
-      (resolve, reject) => {
-        const uploadStrem = cloudinary.uploader.upload_stream(
-          { folder: "next-cloudinay-upload" },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result as CloudinaryUploadResult);
-          }
-        );
-        uploadStrem.end(buffer);
-      }
+    const [userProfile, buffer] = await Promise.all([
+      currentUser(),
+      file.arrayBuffer(),
+    ]);
+
+    await ensureUser(userId, userProfile?.primaryEmailAddress?.emailAddress);
+
+    const uploadResult = await cloudinaryService.uploadImage(
+      Buffer.from(buffer)
     );
-    return NextResponse.json({ publicId: result.public_id }, { status: 200 });
+
+    const asset = await prisma.asset.create({
+      data: {
+        userId,
+        type: AssetType.IMAGE,
+        title: payload.data.title,
+        description: payload.data.description,
+        publicId: uploadResult.public_id,
+        resourceType: "image",
+        originalBytes: file.size,
+        processedBytes: uploadResult.bytes,
+        format: uploadResult.format,
+      },
+    });
+
+    await incrementUploadCount(userId);
+
+    return NextResponse.json({ publicId: asset.publicId, asset }, { status: 201 });
   } catch (error) {
-    console.log("Upload image failed", error);
-    return NextResponse.json({ error: "Upload image failed" }, { status: 500 });
+    console.error("Upload image failed", error);
+    const message =
+      error instanceof Error ? error.message : "Upload image failed";
+    const status = message.includes("limit") ? 429 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

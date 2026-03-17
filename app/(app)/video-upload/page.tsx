@@ -8,6 +8,7 @@ function VideoUpload() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
   //max file size of 60 mb
@@ -17,6 +18,7 @@ function VideoUpload() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
+    setError(null);
 
     if (file.size > MAX_FILE_SIZE) {
       //TODO: add notification
@@ -40,7 +42,11 @@ function VideoUpload() {
       router.push("/");
     } catch (error) {
       console.log(error);
-      // notification for failure
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        setError(error.response.data.error);
+      } else {
+        setError("Upload failed. Please try again.");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -49,6 +55,11 @@ function VideoUpload() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Upload Video</h1>
+      {error && (
+        <div className="alert alert-error mb-4">
+          <span>{error}</span>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="label">

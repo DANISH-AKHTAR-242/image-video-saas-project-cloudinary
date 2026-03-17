@@ -36,6 +36,8 @@ export default function SocialShare() {
     setIsUploading(true);
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("title", file.name || "Social share image");
+    formData.append("description", "Optimized for social sharing");
 
     try {
       const response = await fetch("/api/image-upload", {

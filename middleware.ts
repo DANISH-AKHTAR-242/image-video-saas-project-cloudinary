@@ -1,12 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isPublicRoute = createRouteMatcher([
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/",
-  "/home",
-]);
+const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/"]);
 
 const isPublicApiRoute = createRouteMatcher(["/api/videos"]);
 
@@ -29,7 +24,7 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(new URL("/sign-in", req.url));
     }
     //request for protected api
-    if (isApiRequest && !isPublicApiRoute) {
+    if (isApiRequest && !isPublicApiRoute(req)) {
       return NextResponse.redirect(new URL("/sign-in", req.url));
     }
   }
