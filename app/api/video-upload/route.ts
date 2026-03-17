@@ -1,24 +1,11 @@
-import { PrismaClient } from "@/prisma/generated/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { v2 as cloudinary } from "cloudinary";
+import { prisma } from "@/lib/prisma";
+import { assertWithinUploadLimit, incrementUploadCount } from "@/lib/usage";
+import { ensureUser } from "@/lib/user";
+import { uploadPayloadSchema } from "@/lib/validators/upload";
+import { cloudinaryService } from "@/services/cloudinary.service";
+import { AssetType } from "@/prisma/generated/prisma";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-
-//prisma config
-const prisma = new PrismaClient();
-
-// Configuration
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRECT, // Click 'View API Keys' above to copy your API secret
-});
-
-interface CloudinaryUploadResult {
-  public_id: string;
-  bytes: number;
-  duration?: number;
-  [key: string]: string | number | boolean | object | undefined;
-}
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
@@ -28,63 +15,62 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (
-      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-      !process.env.CLOUDINARY_API_KEY ||
-      !process.env.CLOUDINARY_API_SECRECT
-    ) {
-      return NextResponse.json(
-        { error: "Cloudninary credintial not found" },
-        { status: 500 }
-      );
-    }
-
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const originalSize = formData.get("originalSize") as string;
+
+    const payload = uploadPayloadSchema.safeParse({
+      title: formData.get("title"),
+      description: formData.get("description"),
+      originalSize: formData.get("originalSize"),
+    });
+
+    if (!payload.success) {
+      return NextResponse.json(
+        { error: "Invalid payload", details: payload.error.flatten() },
+        { status: 400 }
+      );
+    }
 
     if (!file) {
       return NextResponse.json({ error: "File not found" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    await assertWithinUploadLimit(userId);
 
-    const result = await new Promise<CloudinaryUploadResult>(
-      (resolve, reject) => {
-        const uploadStrem = cloudinary.uploader.upload_stream(
-          {
-            resource_type: "video",
-            folder: "video-uploads",
-            transformation: [{ quality: "auto", fetch_format: "mp4" }],
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result as CloudinaryUploadResult);
-          }
-        );
-        uploadStrem.end(buffer);
-      }
+    const [userProfile, buffer] = await Promise.all([
+      currentUser(),
+      file.arrayBuffer(),
+    ]);
+
+    await ensureUser(userId, userProfile?.primaryEmailAddress?.emailAddress);
+
+    const uploadResult = await cloudinaryService.uploadVideo(
+      Buffer.from(buffer)
     );
 
-    const video = await prisma.video.create({
+    const asset = await prisma.asset.create({
       data: {
-        title,
-        description,
-        publicId: result.public_id,
-        originalSize: originalSize,
-        cpmpressedSize: String(result.bytes),
-        duration: result.duration || 0,
+        userId,
+        type: AssetType.VIDEO,
+        title: payload.data.title,
+        description: payload.data.description,
+        publicId: uploadResult.public_id,
+        resourceType: "video",
+        originalBytes: Number(payload.data.originalSize ?? file.size),
+        processedBytes: uploadResult.bytes,
+        duration: uploadResult.duration ?? 0,
+        format: uploadResult.format,
       },
     });
 
-    return NextResponse.json(video);
+    await incrementUploadCount(userId);
+
+    return NextResponse.json(asset, { status: 201 });
   } catch (error) {
-    console.log("Upload video failed", error);
-    return NextResponse.json({ error: "Upload video failed" }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error("Upload video failed", error);
+    const message =
+      error instanceof Error ? error.message : "Upload video failed";
+    const status = message.includes("limit") ? 429 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

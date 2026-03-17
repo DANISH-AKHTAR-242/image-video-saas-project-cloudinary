@@ -120,16 +120,38 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
-exports.Prisma.VideoScalarFieldEnum = {
+exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
+  email: 'email',
+  plan: 'plan',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AssetScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  type: 'type',
   title: 'title',
   description: 'description',
   publicId: 'publicId',
-  originalSize: 'originalSize',
-  cpmpressedSize: 'cpmpressedSize',
+  resourceType: 'resourceType',
+  originalBytes: 'originalBytes',
+  processedBytes: 'processedBytes',
   duration: 'duration',
+  format: 'format',
   createdAt: 'createdAt',
-  updatedAat: 'updatedAat'
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.UsageScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  uploadsToday: 'uploadsToday',
+  lastUploadAt: 'lastUploadAt',
+  lastResetAt: 'lastResetAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -146,10 +168,21 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+exports.Plan = exports.$Enums.Plan = {
+  FREE: 'FREE',
+  PRO: 'PRO',
+  TEAM: 'TEAM'
+};
 
+exports.AssetType = exports.$Enums.AssetType = {
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO'
+};
 
 exports.Prisma.ModelName = {
-  video: 'video'
+  User: 'User',
+  Asset: 'Asset',
+  Usage: 'Usage'
 };
 
 /**

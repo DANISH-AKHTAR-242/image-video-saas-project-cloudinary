@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { getCldImageUrl, getCldVideoUrl } from "next-cloudinary";
 import { Download, Clock, FileDown, FileUp } from "lucide-react";
 import dayjs from "dayjs";
 import realtiveTime from "dayjs/plugin/relativeTime";
 import { filesize } from "filesize";
-import { Video } from "../types";
-
+import { Asset } from "../types";
 
 dayjs.extend(realtiveTime);
 
 interface VideoCardProps {
-  video: Video;
+  video: Asset;
   onDownload: (url: string, title: string) => void;
 }
 
@@ -48,19 +48,26 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, onDownload }) => {
     });
   }, []);
 
-  // const formatSize = useCallback((size: number) => {
-  //   return filesize(size);
-  // }, []);
+  const formatSize = useCallback((size?: number | null) => {
+    if (!size) return "N/A";
+    return filesize(size, { standard: "iec" }).toString();
+  }, []);
 
-  const formatDuration = useCallback((seconds: number) => {
+  const formatDuration = useCallback((seconds?: number | null) => {
+    if (!seconds) return "0:00";
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.round(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   }, []);
 
-  const compressionPercentage = Math.round(
-    (1 - Number(video.compressedSize) / Number(video.originalSize)) * 100
-  );
+  const compressionPercentage = video.processedBytes
+    ? Math.max(
+        0,
+        Math.round(
+          (1 - Number(video.processedBytes) / Number(video.originalBytes)) * 100
+        )
+      )
+    : 0;
 
   useEffect(() => {
     setPreviewError(false);
@@ -93,10 +100,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, onDownload }) => {
             />
           )
         ) : (
-          <img
+          <Image
             src={getThumbnailUrl(video.publicId)}
             alt={video.title}
-            className="w-full h-full object-cover"
+            fill
+            sizes="400px"
+            className="object-cover"
           />
         )}
         <div className="absolute bottom-2 right-2 bg-base-100 bg-opacity-70 px-2 py-1 rounded-lg text-sm flex items-center">
@@ -117,14 +126,14 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, onDownload }) => {
             <FileUp size={18} className="mr-2 text-primary" />
             <div>
               <div className="font-semibold">Original</div>
-              {/* <div>{formatSize(Number(video.originalSize))}</div> */}
+              <div>{formatSize(Number(video.originalBytes))}</div>
             </div>
           </div>
           <div className="flex items-center">
             <FileDown size={18} className="mr-2 text-secondary" />
             <div>
-              <div className="font-semibold">Compressed</div>
-              {/* <div>{formatSize(Number(video.compressedSize))}</div> */}
+              <div className="font-semibold">Processed</div>
+              <div>{formatSize(Number(video.processedBytes ?? 0))}</div>
             </div>
           </div>
         </div>

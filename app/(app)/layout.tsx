@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
@@ -19,11 +20,7 @@ const sidebarItems = [
   { href: "/video-upload", icon: UploadIcon, label: "Video Upload" },
 ];
 
-export default function AppLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -71,12 +68,14 @@ export default function AppLayout({
               {user && (
                 <>
                   <div className="avatar">
-                    <div className="w-8 h-8 rounded-full">
-                      <img
+                    <div className="w-8 h-8 rounded-full relative">
+                      <Image
                         src={user.imageUrl}
                         alt={
                           user.username || user.emailAddresses[0].emailAddress
                         }
+                        fill
+                        className="object-cover rounded-full"
                       />
                     </div>
                   </div>
@@ -142,4 +141,41 @@ export default function AppLayout({
       </div>
     </div>
   );
+}
+
+function FallbackShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-base-100">
+      <header className="w-full bg-base-200">
+        <div className="navbar max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex-1">
+            <Link href="/">
+              <div className="btn btn-ghost normal-case text-2xl font-bold tracking-tight cursor-pointer">
+                Cloudinary Showcase
+              </div>
+            </Link>
+          </div>
+        </div>
+      </header>
+      <main className="flex-grow">
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 my-8">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!publishableKey) {
+    return <FallbackShell>{children}</FallbackShell>;
+  }
+
+  return <AuthenticatedShell>{children}</AuthenticatedShell>;
 }
