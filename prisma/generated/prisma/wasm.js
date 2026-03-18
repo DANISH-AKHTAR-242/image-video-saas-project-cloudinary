@@ -194,7 +194,7 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
+  "postinstall": true,
   "ciName": "GitHub Actions",
   "inlineDatasources": {
     "db": {
