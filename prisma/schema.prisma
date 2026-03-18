@@ -17,7 +17,20 @@ datasource db {
 enum Plan {
   FREE
   PRO
-  TEAM
+  BUSINESS
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
 }
 
 enum AssetType {
@@ -26,39 +39,83 @@ enum AssetType {
 }
 
 model User {
-  id String @id
-  email String?
-  plan Plan @default(FREE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  assets Asset[]
-  usage Usage?
+  id              String         @id
+  email           String?        @unique
+  role            Role           @default(USER)
+  plan            Plan           @default(FREE)
+  stripeCustomerId String?       @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  assets          Asset[]
+  usage           Usage?
+  subscription    Subscription?
+  transactions    Transaction[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model Asset {
-  id String @id @default(cuid())
-  userId String
-  user User @relation(fields: [userId], references: [id])
-  type AssetType
-  title String
-  description String?
-  publicId String
-  resourceType String
-  originalBytes Int
-  processedBytes Int?
-  duration Float?
-  format String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  type                AssetType
+  title               String
+  description         String?
+  publicId            String    @unique
+  resourceType        String
+  originalBytes       Int
+  processedBytes      Int?
+  duration            Float?
+  format              String?
+  transformationCount Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model Usage {
-  id String @id @default(cuid())
-  userId String @unique
-  user User @relation(fields: [userId], references: [id])
-  uploadsToday Int @default(0)
-  lastUploadAt DateTime?
-  lastResetAt DateTime @default(now())
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id])
+  uploadsToday        Int      @default(0)
+  uploadsThisMonth    Int      @default(0)
+  transformationsThisMonth Int @default(0)
+  lastUploadAt        DateTime?
+  lastDailyResetAt    DateTime @default(now())
+  lastMonthlyResetAt  DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Subscription {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id])
+  stripeSubscriptionId String            @unique
+  stripePriceId       String
+  status              SubscriptionStatus @default(INCOMPLETE)
+  currentPeriodEnd    DateTime?
+  cancelAtPeriodEnd   Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model Transaction {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  stripeInvoiceId  String?  @unique
+  stripePaymentIntentId String? @unique
+  amount           Int
+  currency         String   @default("usd")
+  status           String
+  paidAt           DateTime?
+  createdAt        DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  name      String
+  metadata  Json?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

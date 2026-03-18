@@ -6,7 +6,10 @@
     "dev": "prisma generate && next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "prepare": "husky"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.3",
@@ -20,6 +23,7 @@
     "next-cloudinary": "^6.16.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "stripe": "^20.4.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -31,9 +35,12 @@
     "daisyui": "^5.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.1",
     "prisma": "^6.17.1",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

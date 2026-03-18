@@ -123,7 +123,9 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
+  role: 'role',
   plan: 'plan',
+  stripeCustomerId: 'stripeCustomerId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -140,6 +142,7 @@ exports.Prisma.AssetScalarFieldEnum = {
   processedBytes: 'processedBytes',
   duration: 'duration',
   format: 'format',
+  transformationCount: 'transformationCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -148,15 +151,55 @@ exports.Prisma.UsageScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   uploadsToday: 'uploadsToday',
+  uploadsThisMonth: 'uploadsThisMonth',
+  transformationsThisMonth: 'transformationsThisMonth',
   lastUploadAt: 'lastUploadAt',
-  lastResetAt: 'lastResetAt',
+  lastDailyResetAt: 'lastDailyResetAt',
+  lastMonthlyResetAt: 'lastMonthlyResetAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SubscriptionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  stripeSubscriptionId: 'stripeSubscriptionId',
+  stripePriceId: 'stripePriceId',
+  status: 'status',
+  currentPeriodEnd: 'currentPeriodEnd',
+  cancelAtPeriodEnd: 'cancelAtPeriodEnd',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TransactionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  stripeInvoiceId: 'stripeInvoiceId',
+  stripePaymentIntentId: 'stripePaymentIntentId',
+  amount: 'amount',
+  currency: 'currency',
+  status: 'status',
+  paidAt: 'paidAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AnalyticsEventScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  name: 'name',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
 };
 
 exports.Prisma.QueryMode = {
@@ -168,10 +211,21 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
+};
+exports.Role = exports.$Enums.Role = {
+  USER: 'USER',
+  ADMIN: 'ADMIN'
+};
+
 exports.Plan = exports.$Enums.Plan = {
   FREE: 'FREE',
   PRO: 'PRO',
-  TEAM: 'TEAM'
+  BUSINESS: 'BUSINESS'
 };
 
 exports.AssetType = exports.$Enums.AssetType = {
@@ -179,10 +233,21 @@ exports.AssetType = exports.$Enums.AssetType = {
   VIDEO: 'VIDEO'
 };
 
+exports.SubscriptionStatus = exports.$Enums.SubscriptionStatus = {
+  TRIALING: 'TRIALING',
+  ACTIVE: 'ACTIVE',
+  PAST_DUE: 'PAST_DUE',
+  CANCELED: 'CANCELED',
+  INCOMPLETE: 'INCOMPLETE'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   Asset: 'Asset',
-  Usage: 'Usage'
+  Usage: 'Usage',
+  Subscription: 'Subscription',
+  Transaction: 'Transaction',
+  AnalyticsEvent: 'AnalyticsEvent'
 };
 
 /**
