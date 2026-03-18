@@ -95,7 +95,9 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
+  role: 'role',
   plan: 'plan',
+  stripeCustomerId: 'stripeCustomerId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -112,6 +114,7 @@ exports.Prisma.AssetScalarFieldEnum = {
   processedBytes: 'processedBytes',
   duration: 'duration',
   format: 'format',
+  transformationCount: 'transformationCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -120,15 +123,55 @@ exports.Prisma.UsageScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   uploadsToday: 'uploadsToday',
+  uploadsThisMonth: 'uploadsThisMonth',
+  transformationsThisMonth: 'transformationsThisMonth',
   lastUploadAt: 'lastUploadAt',
-  lastResetAt: 'lastResetAt',
+  lastDailyResetAt: 'lastDailyResetAt',
+  lastMonthlyResetAt: 'lastMonthlyResetAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SubscriptionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  stripeSubscriptionId: 'stripeSubscriptionId',
+  stripePriceId: 'stripePriceId',
+  status: 'status',
+  currentPeriodEnd: 'currentPeriodEnd',
+  cancelAtPeriodEnd: 'cancelAtPeriodEnd',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TransactionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  stripeInvoiceId: 'stripeInvoiceId',
+  stripePaymentIntentId: 'stripePaymentIntentId',
+  amount: 'amount',
+  currency: 'currency',
+  status: 'status',
+  paidAt: 'paidAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AnalyticsEventScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  name: 'name',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
 };
 
 exports.Prisma.QueryMode = {
@@ -140,10 +183,29 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
+};
 exports.Plan = exports.$Enums.Plan = {
   FREE: 'FREE',
   PRO: 'PRO',
-  TEAM: 'TEAM'
+  BUSINESS: 'BUSINESS'
+};
+
+exports.Role = exports.$Enums.Role = {
+  USER: 'USER',
+  ADMIN: 'ADMIN'
+};
+
+exports.SubscriptionStatus = exports.$Enums.SubscriptionStatus = {
+  TRIALING: 'TRIALING',
+  ACTIVE: 'ACTIVE',
+  PAST_DUE: 'PAST_DUE',
+  CANCELED: 'CANCELED',
+  INCOMPLETE: 'INCOMPLETE'
 };
 
 exports.AssetType = exports.$Enums.AssetType = {
@@ -154,7 +216,10 @@ exports.AssetType = exports.$Enums.AssetType = {
 exports.Prisma.ModelName = {
   User: 'User',
   Asset: 'Asset',
-  Usage: 'Usage'
+  Usage: 'Usage',
+  Subscription: 'Subscription',
+  Transaction: 'Transaction',
+  AnalyticsEvent: 'AnalyticsEvent'
 };
 /**
  * Create the Client
@@ -204,13 +269,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum Plan {\n  FREE\n  PRO\n  TEAM\n}\n\nenum AssetType {\n  IMAGE\n  VIDEO\n}\n\nmodel User {\n  id        String   @id\n  email     String?\n  plan      Plan     @default(FREE)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n  assets    Asset[]\n  usage     Usage?\n}\n\nmodel Asset {\n  id             String    @id @default(cuid())\n  userId         String\n  user           User      @relation(fields: [userId], references: [id])\n  type           AssetType\n  title          String\n  description    String?\n  publicId       String\n  resourceType   String\n  originalBytes  Int\n  processedBytes Int?\n  duration       Float?\n  format         String?\n  createdAt      DateTime  @default(now())\n  updatedAt      DateTime  @updatedAt\n}\n\nmodel Usage {\n  id           String    @id @default(cuid())\n  userId       String    @unique\n  user         User      @relation(fields: [userId], references: [id])\n  uploadsToday Int       @default(0)\n  lastUploadAt DateTime?\n  lastResetAt  DateTime  @default(now())\n  createdAt    DateTime  @default(now())\n  updatedAt    DateTime  @updatedAt\n}\n",
-  "inlineSchemaHash": "cd788f523c85fd9288c7ca7b90e4137ba1da6fa36de87e139a570372a539f208",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum Plan {\n  FREE\n  PRO\n  BUSINESS\n}\n\nenum Role {\n  USER\n  ADMIN\n}\n\nenum SubscriptionStatus {\n  TRIALING\n  ACTIVE\n  PAST_DUE\n  CANCELED\n  INCOMPLETE\n}\n\nenum AssetType {\n  IMAGE\n  VIDEO\n}\n\nmodel User {\n  id               String           @id\n  email            String?          @unique\n  role             Role             @default(USER)\n  plan             Plan             @default(FREE)\n  stripeCustomerId String?          @unique\n  createdAt        DateTime         @default(now())\n  updatedAt        DateTime         @updatedAt\n  assets           Asset[]\n  usage            Usage?\n  subscription     Subscription?\n  transactions     Transaction[]\n  analyticsEvents  AnalyticsEvent[]\n}\n\nmodel Asset {\n  id                  String    @id @default(cuid())\n  userId              String\n  user                User      @relation(fields: [userId], references: [id])\n  type                AssetType\n  title               String\n  description         String?\n  publicId            String    @unique\n  resourceType        String\n  originalBytes       Int\n  processedBytes      Int?\n  duration            Float?\n  format              String?\n  transformationCount Int       @default(0)\n  createdAt           DateTime  @default(now())\n  updatedAt           DateTime  @updatedAt\n}\n\nmodel Usage {\n  id                       String    @id @default(cuid())\n  userId                   String    @unique\n  user                     User      @relation(fields: [userId], references: [id])\n  uploadsToday             Int       @default(0)\n  uploadsThisMonth         Int       @default(0)\n  transformationsThisMonth Int       @default(0)\n  lastUploadAt             DateTime?\n  lastDailyResetAt         DateTime  @default(now())\n  lastMonthlyResetAt       DateTime  @default(now())\n  createdAt                DateTime  @default(now())\n  updatedAt                DateTime  @updatedAt\n}\n\nmodel Subscription {\n  id                   String             @id @default(cuid())\n  userId               String             @unique\n  user                 User               @relation(fields: [userId], references: [id])\n  stripeSubscriptionId String             @unique\n  stripePriceId        String\n  status               SubscriptionStatus @default(INCOMPLETE)\n  currentPeriodEnd     DateTime?\n  cancelAtPeriodEnd    Boolean            @default(false)\n  createdAt            DateTime           @default(now())\n  updatedAt            DateTime           @updatedAt\n}\n\nmodel Transaction {\n  id                    String    @id @default(cuid())\n  userId                String\n  user                  User      @relation(fields: [userId], references: [id])\n  stripeInvoiceId       String?   @unique\n  stripePaymentIntentId String?   @unique\n  amount                Int\n  currency              String    @default(\"usd\")\n  status                String\n  paidAt                DateTime?\n  createdAt             DateTime  @default(now())\n}\n\nmodel AnalyticsEvent {\n  id        String   @id @default(cuid())\n  userId    String?\n  user      User?    @relation(fields: [userId], references: [id])\n  name      String\n  metadata  Json?\n  createdAt DateTime @default(now())\n}\n",
+  "inlineSchemaHash": "0245ea16d5034f0266977cf59d33811facafed16bdd8b1b55d65f6c301dec35b",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"plan\",\"kind\":\"enum\",\"type\":\"Plan\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"assets\",\"kind\":\"object\",\"type\":\"Asset\",\"relationName\":\"AssetToUser\"},{\"name\":\"usage\",\"kind\":\"object\",\"type\":\"Usage\",\"relationName\":\"UsageToUser\"}],\"dbName\":null},\"Asset\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"AssetToUser\"},{\"name\":\"type\",\"kind\":\"enum\",\"type\":\"AssetType\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"publicId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"resourceType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"originalBytes\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"processedBytes\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"duration\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"format\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Usage\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"UsageToUser\"},{\"name\":\"uploadsToday\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"lastUploadAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"lastResetAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"Role\"},{\"name\":\"plan\",\"kind\":\"enum\",\"type\":\"Plan\"},{\"name\":\"stripeCustomerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"assets\",\"kind\":\"object\",\"type\":\"Asset\",\"relationName\":\"AssetToUser\"},{\"name\":\"usage\",\"kind\":\"object\",\"type\":\"Usage\",\"relationName\":\"UsageToUser\"},{\"name\":\"subscription\",\"kind\":\"object\",\"type\":\"Subscription\",\"relationName\":\"SubscriptionToUser\"},{\"name\":\"transactions\",\"kind\":\"object\",\"type\":\"Transaction\",\"relationName\":\"TransactionToUser\"},{\"name\":\"analyticsEvents\",\"kind\":\"object\",\"type\":\"AnalyticsEvent\",\"relationName\":\"AnalyticsEventToUser\"}],\"dbName\":null},\"Asset\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"AssetToUser\"},{\"name\":\"type\",\"kind\":\"enum\",\"type\":\"AssetType\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"publicId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"resourceType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"originalBytes\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"processedBytes\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"duration\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"format\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"transformationCount\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Usage\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"UsageToUser\"},{\"name\":\"uploadsToday\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"uploadsThisMonth\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"transformationsThisMonth\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"lastUploadAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"lastDailyResetAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"lastMonthlyResetAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Subscription\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SubscriptionToUser\"},{\"name\":\"stripeSubscriptionId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stripePriceId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"SubscriptionStatus\"},{\"name\":\"currentPeriodEnd\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"cancelAtPeriodEnd\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Transaction\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"TransactionToUser\"},{\"name\":\"stripeInvoiceId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stripePaymentIntentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"amount\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"currency\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"paidAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"AnalyticsEvent\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"AnalyticsEventToUser\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),
